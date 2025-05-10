@@ -8,15 +8,18 @@ const router = express.Router();
 // Basic, unprotected route for getting user profile (requires userId in query)
 router.get('/get-profile', getUserProfile);
 
-// Protect the following routes
-router.use(protect);
-
 // Protected User Profile Routes (excluding /get-profile)
-router.post('/update-profile', upload.fields([
-    { name: 'profilePhoto', maxCount: 1 },
-    { name: 'coverImage', maxCount: 1 },
-    { name: 'businessLogo', maxCount: 1 }
-]), updateUserProfile); // Now supports image uploads
+router.post(
+    '/update-profile',
+    protect, // ✅ Add this
+    upload.fields([
+      { name: 'profilePhoto', maxCount: 1 },
+      { name: 'coverImage', maxCount: 1 },
+      { name: 'businessLogo', maxCount: 1 },
+    ]),
+    updateUserProfile
+  );
+  
 
 // Protected Refer a Friend Route
 router.post('/refer', referFriend);

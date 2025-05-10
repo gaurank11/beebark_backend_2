@@ -50,7 +50,7 @@ const registerUser = async (req, res) => {
       Team Beebark
       `
     );
-    await generateAndSendOtp(email); // ✅ Call without sending response
+    await generateAndSendOtp(email); 
 
     res.status(201).json({ message: 'User registered successfully, OTP sent to email.', user: savedUser });
   } catch (err) {
@@ -89,13 +89,44 @@ const forgotPassword = async (req, res) => {
     if (!user) return res.status(400).json({ message: 'User not found' });
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
 
     await Otp.deleteMany({ email }); // Clean old OTPs
     await Otp.create({ email, otp, expiresAt });
 
-    await sendEmail(email, 'Reset Password OTP', `Your OTP is: ${otp}`);
+    await sendEmail(email, 'Reset Password OTP', `Your OTP is: ${otp}\n\nPlease check your Spam folder if you're not seeing it in Inbox.`);
     res.status(200).json({ message: 'OTP sent to email' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// Verify OTP for forgot password
+const verifyForgotOtp = async (req, res) => {
+  const { email, otp } = req.body;
+
+  try {
+    const record = await Otp.findOne({ email, otp });
+
+    if (!record || record.expiresAt < Date.now()) {
+      return res.status(400).json({ message: 'Invalid or expired OTP' });
+    }
+
+    await Otp.deleteOne({ _id: record._id });
+    res.status(200).json({ message: 'OTP verified. You can now reset your password.' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// Reset Password
+const resetPassword = async (req, res) => {
+  const { email, newPassword } = req.body;
+
+  try {
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await User.findOneAndUpdate({ email }, { password: hashed });
+    res.status(200).json({ message: 'Password updated successfully' });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
@@ -103,4 +134,4 @@ const forgotPassword = async (req, res) => {
 
 
 
-module.exports = { registerUser, loginUser, forgotPassword };
+module.exports = { registerUser, loginUser, forgotPassword, verifyForgotOtp, resetPassword  };
