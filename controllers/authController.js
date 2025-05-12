@@ -33,23 +33,25 @@ const registerUser = async (req, res) => {
 
     await sendEmail(
       email,
-      'Welcome to Beebark - Let\'s Get You Started',
+      "Welcome to Beebark - Let's Get You Started",
       `
-      Hi ${firstname},
+      <div style="font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6;">
+        <p>Hi ${firstname},</p>
+        
+        <p>Thanks for signing up on <strong>Beebark</strong>. You've taken the first step into a growing ecosystem designed to connect people, ideas, and possibilities in the built environment.</p>
+        
+        <p>To complete your registration, we just need to verify your email.</p>
     
-      Thanks for signing up on Beebark. You've taken the first step into a growing ecosystem designed to connect people, ideas, and possibilities in the built environment.
-      
-      To complete your registration, we just need to verify your email.
-    
-      Next Step: Please check your inbox for the OTP and enter it to confirm your email.
-    
-      If you didn't request this registration, feel free to ignore this message.
-    
-      See you on the inside,
-      
-      Team Beebark
+        <p><strong>Next Step:</strong> Please check your inbox for the OTP and enter it to confirm your email.</p>
+        
+        <p>If you didn't request this registration, feel free to ignore this message.</p>
+        
+        <p>See you on the inside,</p>
+        <p><strong>Team Beebark</strong></p>
+      </div>
       `
     );
+    
     await generateAndSendOtp(email); 
 
     res.status(201).json({ message: 'User registered successfully, OTP sent to email.', user: savedUser });

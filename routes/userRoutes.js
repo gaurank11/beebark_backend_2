@@ -11,7 +11,7 @@ router.get('/get-profile', getUserProfile);
 // Protected User Profile Routes (excluding /get-profile)
 router.post(
     '/update-profile',
-    protect, // ✅ Add this
+    protect, 
     upload.fields([
       { name: 'profilePhoto', maxCount: 1 },
       { name: 'coverImage', maxCount: 1 },

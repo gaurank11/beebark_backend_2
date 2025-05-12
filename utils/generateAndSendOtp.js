@@ -2,38 +2,34 @@ const Otp = require('../models/Otp');
 const sendEmail = require('./sendEmail');
 
 const generateAndSendOtp = async (email) => {
-  // Generate a 6-digit OTP
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  
-  // Set the OTP expiration time to 10 minutes from now
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-  // Delete any existing OTP record for the email
   await Otp.deleteMany({ email });
-
-  // Create a new OTP record
   await Otp.create({ email, otp, expiresAt });
 
-  // Send the OTP email
   await sendEmail(
     email,
     `Your Beebark OTP is ${otp}`,
     `
-    Hi User,
+      <div style="font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6;">
+        <p>Hi,</p>
 
-    Your One-Time Password (OTP) for verifying your email with Beebark is:
+        <p>Your One-Time Password (OTP) for verifying your email with <strong>Beebark</strong> is:</p>
+        
+        <h2>${otp}</h2>
 
-    ${otp}
+        <p>Please enter this on the verification page to continue your onboarding process.</p>
 
-    Please enter this on the verification page to continue your onboarding.
+        <p><strong>Note:</strong> This OTP is valid for <strong>10 minutes</strong>.</p>
 
-    The OTP is valid for 10 minutes.
+        <p>If you didn't request this, please ignore this email.</p>
 
-    If you didn't request this, please ignore this email.
-
-    With purpose,
-    Team Beebark
-    `
+        <p>With purpose,</p>
+        <p><strong>Team Beebark</strong></p>
+      </div>
+    `,
+    'info@thebeebark.com' // Optional 4th argument if your sendEmail supports replyTo
   );
 };
 

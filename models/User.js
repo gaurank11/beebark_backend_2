@@ -49,9 +49,10 @@ const userSchema = mongoose.Schema({
 
     // Contact Info
     phone: { type: String, required: true },
-    personalPhone: { type: String },
+    phoneBusiness: { type: String },
     countryCode: { type: String, required: true },
     // contact
+        address: String,
         country: String,
         state: String,
         city: String,

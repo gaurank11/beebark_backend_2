@@ -1,7 +1,7 @@
 const nodemailer = require('nodemailer');
 require('dotenv').config(); // if you're using a .env file
 
-const sendEmail = async (to, subject, text) => {
+const sendEmail = async (to, subject, htmlContent) => {
   const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -14,10 +14,11 @@ const sendEmail = async (to, subject, text) => {
   });
 
   const mailOptions = {
-    from: process.env.SMTP_USER,
+    from: `"BeeBark" <${process.env.SMTP_USER}>`,
     to,
     subject,
-    text,
+    html: htmlContent, 
+    replyTo: 'info@thebeebark.com', 
   };
 
   try {
