@@ -29,7 +29,7 @@ const generateAndSendOtp = async (email) => {
         <p><strong>Team Beebark</strong></p>
       </div>
     `,
-    'info@thebeebark.com' // Optional 4th argument if your sendEmail supports replyTo
+    'info@thebeebark.com' 
   );
 };
 
