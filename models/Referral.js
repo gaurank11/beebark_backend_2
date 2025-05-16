@@ -25,6 +25,10 @@ const referralSchema = mongoose.Schema({
         type: Boolean,
         default: false, // Track if the referrer has been rewarded
     },
+    used: { // Track if the referral code has been used for signup
+        type: Boolean,
+        default: false,
+    },
 }, {
     timestamps: true,
 });

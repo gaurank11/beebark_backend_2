@@ -30,62 +30,65 @@ const registerUser = async (req, res) => {
             otherCategory: category === "others" ? otherCategory : "",
         });
 
+        let referralUsed = false; // Flag to track if a valid referral was used
+
         // 5. Process the referral code if provided
         if (referralCode) {
-            const referral = await Referral.findOne({ referralCode: referralCode, used: false }); // Assuming a 'used' field in Referral model
+            const referral = await Referral.findOne({ referralCode: referralCode, used: false });
 
             if (referral) {
                 const referrerId = referral.referrer;
 
                 // A. Link the new user to the referrer
-                newUser.referredBy = referrerId; // Add referredBy to the new user.
+                newUser.referredBy = referrerId;
                 await newUser.save(); // Save here to have the referredBy
 
-                // B. Mark the referral as used (optional, depending on your logic)
+                // B. Mark the referral as used and signup as complete
                 referral.used = true;
-                await referral.save();
+                referral.signupStatus = true;
+                referralUsed = true;
 
-                // C. Trigger reward logic (this will depend heavily on your rewards system)
+                // C. Trigger reward logic
                 try {
-                    // Example: Update referrer's reward points
                     const referrer = await User.findById(referrerId);
                     if (referrer) {
                         referrer.rewardPoints = (referrer.rewardPoints || 0) + 10; // Example: 10 points for a referral
                         await referrer.save();
+                        referral.rewardStatus = true; // Update reward status
                         console.log(`Reward points added to referrer: ${referrer.email}`);
                     }
                 } catch (rewardError) {
                     console.error("Error processing referral rewards:", rewardError);
                     // Decide how to handle reward processing failures (e.g., log, retry)
                 }
+                await referral.save(); // Save the updated referral document
             } else {
                 console.log(`Invalid or used referral code: ${referralCode}`);
                 // Optionally, you could inform the user that the referral code wasn't valid
-                // but still proceed with the registration.  You might want to add a message to the response.
+                // but still proceed with the registration.
             }
         }
 
-
-        const savedUser = await newUser.save(); // Save the user *after* potentially adding the referredBy field
+        const savedUser = await newUser.save(); // Save the user if not saved earlier
 
         await sendEmail(
             email,
             "Welcome to Beebark - Let's Get You Started",
             `
-            <div style="font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6;">
-                <p>Hi ${firstname},</p>
-                
-                <p>Thanks for signing up on <strong>Beebark</strong>. You've taken the first step into a growing ecosystem designed to connect people, ideas, and possibilities in the built environment.</p>
-                
-                <p>To complete your registration, we just need to verify your email.</p>
-       
-                <p><strong>Next Step:</strong> Please check your inbox for the OTP and enter it to confirm your email.</p>
-                
-                <p>If you didn't request this registration, feel free to ignore this message.</p>
-                
-                <p>See you on the inside,</p>
-                <p><strong>Team Beebark</strong></p>
-            </div>
+                <div style="font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6;">
+                    <p>Hi ${firstname},</p>
+
+                    <p>Thanks for signing up on <strong>Beebark</strong>. You've taken the first step into a growing ecosystem designed to connect people, ideas, and possibilities in the built environment.</p>
+
+                    <p>To complete your registration, we just need to verify your email.</p>
+
+                    <p><strong>Next Step:</strong> Please check your inbox for the OTP and enter it to confirm your email.</p>
+
+                    <p>If you didn't request this registration, feel free to ignore this message.</p>
+
+                    <p>See you on the inside,</p>
+                    <p><strong>Team Beebark</strong></p>
+                </div>
             `
         );
 

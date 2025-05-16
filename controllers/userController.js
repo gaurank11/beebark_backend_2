@@ -219,7 +219,7 @@ const referFriend = async (req, res) => {
         // Construct the referral link (you'll need to define your signup URL)
         const referralLink = `${process.env.CLIENT_URL}/register?ref=${referralCode}`;
 
-        const referrerName = referrer.firstname; // Handle cases where 'name' might not exist
+        const referrerName = referrer.firstname || 'A Beebark User';
         const emailSubject = `Hey, ${referrerName} invited you to join Beebark!`;
         const emailHtml = `
             <p>Hi there,</p>
