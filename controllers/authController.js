@@ -5,59 +5,96 @@ const jwt = require('jsonwebtoken');
 const sendEmail = require('../utils/sendEmail');
 const cloudinary = require('../config/cloudinary');
 const generateAndSendOtp = require('../utils/generateAndSendOtp');
+const Referral = require('../models/Referral'); // Import your Referral model
 
 // Register a new user
 const registerUser = async (req, res) => {
-  const { firstname, lastname, name, email, password, phone, countryCode, category, otherCategory } = req.body;
+    const { firstname, lastname, name, email, password, phone, countryCode, category, otherCategory, referralCode } = req.body;
 
-  try {
-    const userExists = await User.findOne({ email });
-    if (userExists) {
-      return res.status(400).json({ message: 'User already exists' });
+    try {
+        const userExists = await User.findOne({ email });
+        if (userExists) {
+            return res.status(400).json({ message: 'User already exists' });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const newUser = new User({
+            firstname,
+            lastname,
+            name,
+            email,
+            password: hashedPassword,
+            phone,
+            countryCode,
+            category,
+            otherCategory: category === "others" ? otherCategory : "",
+        });
+
+        // 5. Process the referral code if provided
+        if (referralCode) {
+            const referral = await Referral.findOne({ referralCode: referralCode, used: false }); // Assuming a 'used' field in Referral model
+
+            if (referral) {
+                const referrerId = referral.referrer;
+
+                // A. Link the new user to the referrer
+                newUser.referredBy = referrerId; // Add referredBy to the new user.
+                await newUser.save(); // Save here to have the referredBy
+
+                // B. Mark the referral as used (optional, depending on your logic)
+                referral.used = true;
+                await referral.save();
+
+                // C. Trigger reward logic (this will depend heavily on your rewards system)
+                try {
+                    // Example: Update referrer's reward points
+                    const referrer = await User.findById(referrerId);
+                    if (referrer) {
+                        referrer.rewardPoints = (referrer.rewardPoints || 0) + 10; // Example: 10 points for a referral
+                        await referrer.save();
+                        console.log(`Reward points added to referrer: ${referrer.email}`);
+                    }
+                } catch (rewardError) {
+                    console.error("Error processing referral rewards:", rewardError);
+                    // Decide how to handle reward processing failures (e.g., log, retry)
+                }
+            } else {
+                console.log(`Invalid or used referral code: ${referralCode}`);
+                // Optionally, you could inform the user that the referral code wasn't valid
+                // but still proceed with the registration.  You might want to add a message to the response.
+            }
+        }
+
+
+        const savedUser = await newUser.save(); // Save the user *after* potentially adding the referredBy field
+
+        await sendEmail(
+            email,
+            "Welcome to Beebark - Let's Get You Started",
+            `
+            <div style="font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6;">
+                <p>Hi ${firstname},</p>
+                
+                <p>Thanks for signing up on <strong>Beebark</strong>. You've taken the first step into a growing ecosystem designed to connect people, ideas, and possibilities in the built environment.</p>
+                
+                <p>To complete your registration, we just need to verify your email.</p>
+       
+                <p><strong>Next Step:</strong> Please check your inbox for the OTP and enter it to confirm your email.</p>
+                
+                <p>If you didn't request this registration, feel free to ignore this message.</p>
+                
+                <p>See you on the inside,</p>
+                <p><strong>Team Beebark</strong></p>
+            </div>
+            `
+        );
+
+        await generateAndSendOtp(email);
+
+        res.status(201).json({ message: 'User registered successfully, OTP sent to email.', user: savedUser });
+    } catch (err) {
+        res.status(500).json({ message: 'Server Error', error: err.message });
     }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({
-      firstname,
-      lastname,
-      name,
-      email,
-      password: hashedPassword,
-      phone,
-      countryCode,
-      category,
-      otherCategory: category === "others" ? otherCategory : "",
-    });
-
-    const savedUser = await newUser.save();
-
-    await sendEmail(
-      email,
-      "Welcome to Beebark - Let's Get You Started",
-      `
-      <div style="font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6;">
-        <p>Hi ${firstname},</p>
-        
-        <p>Thanks for signing up on <strong>Beebark</strong>. You've taken the first step into a growing ecosystem designed to connect people, ideas, and possibilities in the built environment.</p>
-        
-        <p>To complete your registration, we just need to verify your email.</p>
-    
-        <p><strong>Next Step:</strong> Please check your inbox for the OTP and enter it to confirm your email.</p>
-        
-        <p>If you didn't request this registration, feel free to ignore this message.</p>
-        
-        <p>See you on the inside,</p>
-        <p><strong>Team Beebark</strong></p>
-      </div>
-      `
-    );
-    
-    await generateAndSendOtp(email); 
-
-    res.status(201).json({ message: 'User registered successfully, OTP sent to email.', user: savedUser });
-  } catch (err) {
-    res.status(500).json({ message: 'Server Error', error: err.message });
-  }
 };
 
 // Login User
