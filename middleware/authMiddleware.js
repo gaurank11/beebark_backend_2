@@ -12,7 +12,14 @@ const protect = async (req, res, next) => {
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         console.log(decoded);
-        req.user = await User.findById(decoded.userId).select('-password'); // Exclude password from user object
+
+        const user = await User.findById(decoded.userId).select('-password'); // Exclude password
+
+        if (!user) {
+            return res.status(401).json({ message: 'Token is not valid: User not found' });
+        }
+
+        req.user = user;
         next();
     } catch (err) {
         res.status(401).json({ message: 'Token is not valid' });
