@@ -162,63 +162,80 @@ const isValidEmail = (email) => {
 
 // ✅ REFER A FRIEND
 const referFriend = async (req, res) => {
-  try {
-    const { friendEmail } = req.body;
-    const referrer = req.user._id; // Get the ID of the logged-in user
+    try {
+        const { friendEmail } = req.body;
+        const referrer = req.user._id;
+        const referrerUser = await User.findById(referrer);
 
-    if (!friendEmail) {
-      return res.status(400).json({
-        success: false,
-        message: "Friend's email address is required.",
-      });
+        if (!friendEmail) {
+            return res.status(400).json({
+                success: false,
+                message: "Friend's email address is required.",
+            });
+        }
+
+        if (!isValidEmail(friendEmail)) {
+            return res.status(400).json({
+                success: false,
+                message: "Please enter a valid email address.",
+            });
+        }
+
+        // Check if the referral already exists for this referrer and email
+        const existingReferral = await Referral.findOne({
+            referrer: referrer,
+            referredEmail: friendEmail,
+        });
+
+        if (existingReferral) {
+            return res.status(409).json({
+                success: false,
+                message: "You have already sent an invitation to this email address.",
+            });
+        }
+
+        const referralCode = uuidv4();
+
+        // Create a new referral record with the unique code
+        const newReferral = new Referral({
+            referrer: referrer,
+            referredEmail: friendEmail,
+            referralCode: referralCode,
+        });
+
+        await newReferral.save();
+
+        // Construct the referral link (you'll need to define your signup URL)
+        const referralLink = `${process.env.CLIENT_URL}/signup?ref=${referralCode}`;
+
+        const emailSubject = 'Hey you are invited you to join Beebark!';
+        const emailHtml = `
+            <p>Hi there,</p>
+            <p> (${referrerUser.email}) thought you might be interested in joining Beebark - The Future of Architectural Networking & Marketing!</p>
+            <p>Click the link below to sign up:</p>
+            <p><a href="${referralLink}" style="display: inline-block; background-color: #facc15; color: #221912; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Join Beebark</a></p>
+            <p>By joining through this link, you might be eligible for special benefits!</p>
+            <p>We look forward to seeing you on Beebark!</p>
+            <p>Best regards,<br>The Beebark Team</p>
+        `;
+
+        await sendEmail(friendEmail, emailSubject, emailHtml);
+
+        console.log(`${referrerUser.email} (ID: ${referrer}) referred a friend: ${friendEmail} with code: ${referralCode}`);
+
+        res.status(200).json({
+            success: true,
+            message: `Invitation sent successfully to ${friendEmail}.`,
+        });
+    } catch (error) {
+        console.error("Refer Friend Error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to send referral invitation.",
+            error: error.message,
+        });
     }
-
-    if (!isValidEmail(friendEmail)) {
-      return res.status(400).json({
-        success: false,
-        message: "Please enter a valid email address.",
-      });
-    }
-
-    // Check if the referral already exists
-    const existingReferral = await Referral.findOne({
-      referrer: referrer,
-      referredEmail: friendEmail,
-    });
-
-    if (existingReferral) {
-      return res.status(409).json({
-        success: false,
-        message: "You have already referred this email address.",
-      });
-    }
-
-    // Create a new referral record
-    const newReferral = new Referral({
-      referrer: referrer,
-      referredEmail: friendEmail,
-    });
-
-    await newReferral.save();
-
-    // Optionally: Send an email to the referred friend
-
-    console.log(`${req.user.email} (ID: ${referrer}) referred a friend: ${friendEmail}`);
-
-    res.status(200).json({
-      success: true,
-      message: `Referral sent successfully to ${friendEmail}.`,
-    });
-  } catch (error) {
-    console.error("Refer Friend Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to refer friend.",
-      error: error.message,
-    });
-  }
 };
-
 module.exports = {
     getUserProfile,
     updateUserProfile,
