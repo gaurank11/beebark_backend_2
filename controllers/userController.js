@@ -24,7 +24,7 @@ const uploadImageToCloudinary = async (file, folder = "users") => {
     }
 };
 
-// ✅ GET USER PROFILE
+//  GET USER PROFILE
 const getUserProfile = async (req, res) => {
     try {
         const userId = req.query.userId; // Get user ID from query
@@ -46,7 +46,7 @@ const getUserProfile = async (req, res) => {
     }
 };
 
-// ✅ UPDATE USER PROFILE
+//  UPDATE USER PROFILE
 const updateUserProfile = async (req, res) => {
     try {
         const parsedBody = qs.parse(req.body);
@@ -154,34 +154,69 @@ const updateUserProfile = async (req, res) => {
     }
 };
 
-// refer friend
+// Helper function to validate email format (basic)
+const isValidEmail = (email) => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
+// ✅ REFER A FRIEND
 const referFriend = async (req, res) => {
-    try {
-        const { friendEmail } = req.body;
-        const user = await User.findById(req.user._id);
+  try {
+    const { friendEmail } = req.body;
+    const referrer = req.user._id; // Get the ID of the logged-in user
 
-        if (!friendEmail) {
-            return res.status(400).json({
-                success: false,
-                message: "Friend email is required",
-            });
-        }
-
-        // Log the referral
-        console.log(`${user.email} referred a friend: ${friendEmail}`);
-
-        res.status(200).json({
-            success: true,
-            message: `Referral sent to ${friendEmail}`,
-        });
-    } catch (error) {
-        console.error("Refer Friend Error:", error);
-        res.status(500).json({
-            success: false,
-            message: "Failed to refer friend",
-            error: error.message,
-        });
+    if (!friendEmail) {
+      return res.status(400).json({
+        success: false,
+        message: "Friend's email address is required.",
+      });
     }
+
+    if (!isValidEmail(friendEmail)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid email address.",
+      });
+    }
+
+    // Check if the referral already exists
+    const existingReferral = await Referral.findOne({
+      referrer: referrer,
+      referredEmail: friendEmail,
+    });
+
+    if (existingReferral) {
+      return res.status(409).json({
+        success: false,
+        message: "You have already referred this email address.",
+      });
+    }
+
+    // Create a new referral record
+    const newReferral = new Referral({
+      referrer: referrer,
+      referredEmail: friendEmail,
+    });
+
+    await newReferral.save();
+
+    // Optionally: Send an email to the referred friend
+
+    console.log(`${req.user.email} (ID: ${referrer}) referred a friend: ${friendEmail}`);
+
+    res.status(200).json({
+      success: true,
+      message: `Referral sent successfully to ${friendEmail}.`,
+    });
+  } catch (error) {
+    console.error("Refer Friend Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to refer friend.",
+      error: error.message,
+    });
+  }
 };
 
 module.exports = {
