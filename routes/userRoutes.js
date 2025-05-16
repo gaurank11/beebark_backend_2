@@ -1,5 +1,5 @@
 const express = require('express');
-const { getUserProfile, updateUserProfile, referFriend } = require('../controllers/userController');
+const { getUserProfile, updateUserProfile, referFriend, getMyReferrals } = require('../controllers/userController');
 const { protect } = require('../middleware/authMiddleware');
 const { upload } = require('../middleware/multer');   // Import your multer middleware
 
@@ -23,5 +23,7 @@ router.post(
 
 // Protected Refer a Friend Route
 router.post('/refer', protect, referFriend);
+router.get('/referrals', protect, getMyReferrals); // New route to fetch referrals
+
 
 module.exports = router;
