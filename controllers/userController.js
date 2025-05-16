@@ -2,7 +2,10 @@ const User = require('../models/User');
 const Referral = require('../models/Referral');
 const cloudinary = require('cloudinary').v2;
 const qs = require('qs');
-const mongoose = require('mongoose'); // Ensure mongoose is required here as well
+const mongoose = require('mongoose');
+const { v4: uuidv4 } = require('uuid');
+const sendEmail = require('../utils/sendEmail'); // Assuming your sendEmail.js is in a 'utils' folder
+
 
 // Cloudinary Configuration
 cloudinary.config({
@@ -154,18 +157,18 @@ const updateUserProfile = async (req, res) => {
     }
 };
 
-// Helper function to validate email format (basic)
+// Helper function to validate email format (basic) (as before)
 const isValidEmail = (email) => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
 };
 
-// ✅ REFER A FRIEND
+
+//  REFER A FRIEND
 const referFriend = async (req, res) => {
     try {
         const { friendEmail } = req.body;
-        const referrer = req.user._id;
-        const referrerUser = await User.findById(referrer);
+        const referrer = req.user; // The logged-in user object from the protect middleware
 
         if (!friendEmail) {
             return res.status(400).json({
@@ -181,9 +184,17 @@ const referFriend = async (req, res) => {
             });
         }
 
+        // Prevent self-referrals
+        if (friendEmail === referrer.email) {
+            return res.status(400).json({
+                success: false,
+                message: "You cannot refer your own email address.",
+            });
+        }
+
         // Check if the referral already exists for this referrer and email
         const existingReferral = await Referral.findOne({
-            referrer: referrer,
+            referrer: referrer._id,
             referredEmail: friendEmail,
         });
 
@@ -198,7 +209,7 @@ const referFriend = async (req, res) => {
 
         // Create a new referral record with the unique code
         const newReferral = new Referral({
-            referrer: referrer,
+            referrer: referrer._id,
             referredEmail: friendEmail,
             referralCode: referralCode,
         });
@@ -208,10 +219,11 @@ const referFriend = async (req, res) => {
         // Construct the referral link (you'll need to define your signup URL)
         const referralLink = `${process.env.CLIENT_URL}/signup?ref=${referralCode}`;
 
-        const emailSubject = 'Hey you are invited you to join Beebark!';
+        const referrerName = referrer.name || `${referrer.firstname} ${referrer.lastname}`; // Handle cases where 'name' might not exist
+        const emailSubject = `Hey, ${referrerName} invited you to join Beebark!`;
         const emailHtml = `
             <p>Hi there,</p>
-            <p> (${referrerUser.email}) thought you might be interested in joining Beebark - The Future of Architectural Networking & Marketing!</p>
+            <p>${referrerName} (${referrer.email}) thought you might be interested in joining Beebark - The Future of Architectural Networking & Marketing!</p>
             <p>Click the link below to sign up:</p>
             <p><a href="${referralLink}" style="display: inline-block; background-color: #facc15; color: #221912; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Join Beebark</a></p>
             <p>By joining through this link, you might be eligible for special benefits!</p>
@@ -221,7 +233,7 @@ const referFriend = async (req, res) => {
 
         await sendEmail(friendEmail, emailSubject, emailHtml);
 
-        console.log(`${referrerUser.email} (ID: ${referrer}) referred a friend: ${friendEmail} with code: ${referralCode}`);
+        console.log(`${referrer.email} (ID: ${referrer._id}) referred a friend: ${friendEmail} with code: ${referralCode}`);
 
         res.status(200).json({
             success: true,

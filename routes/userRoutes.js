@@ -22,6 +22,6 @@ router.post(
   
 
 // Protected Refer a Friend Route
-router.post('/refer', referFriend);
+router.post('/refer', protect, referFriend);
 
 module.exports = router;
