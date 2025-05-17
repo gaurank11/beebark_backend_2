@@ -251,16 +251,23 @@ const referFriend = async (req, res) => {
 
 const getMyReferrals = async (req, res) => {
     try {
-        const referrerId = req.user._id; // The logged-in user's ID is available in req.user due to the protect middleware
+        const referrerId = req.user._id; // The logged-in user's ID
 
         if (!referrerId) {
             return res.status(400).json({ success: false, message: 'Referrer ID not found.' });
         }
 
         const referrals = await Referral.find({ referrer: referrerId })
-            .select('referredEmail signupStatus rewardStatus createdAt'); // Select only necessary fields
+            .select('referredEmail signupStatus rewardStatus createdAt');
 
-        res.status(200).json({ success: true, referrals });
+        let totalCredits = 0;
+        referrals.forEach(referral => {
+            if (referral.rewardStatus && referral.signupStatus) { // Award credit only if signup is done AND reward is given
+                totalCredits += 5000;
+            }
+        });
+
+        res.status(200).json({ success: true, referrals, totalCredits });
     } catch (error) {
         console.error('Error fetching user referrals:', error);
         res.status(500).json({ success: false, message: 'Failed to fetch referral history.', error: error.message });
