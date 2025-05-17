@@ -64,7 +64,7 @@ const userSchema = mongoose.Schema({
     otherCategory: { type: String },
     profilePhoto: {
         type: String,
-        default: 'default_profile_pic_url',
+        default: 'https://res.cloudinary.com/dx35apf2r/image/upload/v1747476185/default_profile_pic_url_uqcruc.png',
     },
     coverImage: {
         type: String,
