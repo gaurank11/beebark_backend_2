@@ -225,7 +225,7 @@ const referFriend = async (req, res) => {
             <p>Hi there,</p>
             <p>${referrerName} (${referrer.email}) thought you might be interested in joining Beebark - The Future of Architectural Networking & Marketing!</p>
             <p>Click the link below to sign up:</p>
-            <p><a href="${referralLink}" style="display: inline-block; background-color: #facc15; color: #221912; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Join Beebark</a></p>
+            <p><a href="${referralLink}" target="_blank" style="display: inline-block; background-color: #facc15; color: #221912; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Join Beebark</a></p>
             <p>By joining through this link, you might be eligible for special benefits!</p>
             <p>We look forward to seeing you on Beebark!</p>
             <p>Best regards,<br>The Beebark Team</p>
