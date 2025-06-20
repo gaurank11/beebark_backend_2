@@ -16,14 +16,12 @@ const passport = require('./config/passport'); // Your Passport.js configuration
 // Other custom configurations and routes
 const connectCloudinary = require('./config/cloudinary'); // Assuming this connects to Cloudinary
 const userRoutes = require('./routes/userRoutes');       // User-related API routes
-const authRoutes = require('./routes/authRoutes');       // Authentication routes (including social login)
+const authRoutes = require('./routes/authRoutes');       // Traditional authentication routes (register, login, etc.)
+const socialAuthRoutes = require('./routes/auth');              // Social authentication routes (Google, Facebook Passport strategies)
 const otpRoutes = require('./routes/otpRoutes');         // OTP related routes
 
 // Initialize Express app
 const app = express();
-
-// Set the port for the server
-const PORT = process.env.PORT || 5000;
 
 // Connect to Cloudinary (assuming this function initializes Cloudinary config)
 connectCloudinary();
@@ -55,7 +53,6 @@ app.use(passport.session());
  * These middleware are applied to all incoming requests.
  */
 // Enable CORS (Cross-Origin Resource Sharing) for your frontend application
-// This allows your frontend (e.g., running on localhost:3000) to make requests to this backend
 app.use(cors({
     origin: process.env.CLIENT_URL, // Allow requests only from your frontend URL
     credentials: true,              // Allow cookies (sessions) to be sent cross-origin
@@ -70,15 +67,30 @@ app.use(express.json());
  * API Routes
  * Mount your route handlers at specific base paths.
  */
-app.use('/api/auth', authRoutes); // Handles authentication (login, register, social logins)
-app.use('/api/users', userRoutes); // Handles user profile management, referrals, etc.
-app.use('/api/otp', otpRoutes);   // Handles OTP generation and verification
+// Mount general authentication routes (register, login, etc.)
+app.use('/api/auth', authRoutes);
+
+// Mount social authentication routes (Google, Facebook login/callback)
+// These will also be prefixed with /api/auth, so paths like /api/auth/google, /api/auth/google/callback
+app.use('/api/auth', socialAuthRoutes);
+
+// Mount user-related API routes
+app.use('/api/users', userRoutes);
+
+// Mount OTP related routes
+app.use('/api/otp', otpRoutes);
+
+// Route for the root URL to confirm backend is running (health check)
+// This should come BEFORE the 404 handler.
+app.get('/', (req, res) => {
+    res.status(200).json({ message: 'Beebark Backend API is running successfully!' });
+});
 
 /*
  * Error Handling / Fallback Routes
  * These should be placed after all specific routes.
  */
-// Handle 404 Not Found routes
+// Handle 404 Not Found routes - This MUST be the last route handler before the global error handler
 app.use((req, res) => {
     res.status(404).json({ message: 'Route not found' });
 });
@@ -93,19 +105,19 @@ app.use((err, req, res, next) => {
 });
 
 /*
- * Database Connection and Server Start
- * Connect to MongoDB and then start the Express server.
+ * Database Connection for Vercel Serverless Functions
+ * Mongoose connects here, but the app does NOT listen on a port.
+ * Vercel's runtime environment will manage the HTTP server.
  */
 mongoose.connect(process.env.MONGO_URI)
     .then(() => {
-        console.log('Connected to MongoDB');
-        // Start the server only after successful database connection
-        app.listen(PORT, () => {
-            console.log(`Server running on port ${PORT}`);
-        });
+        console.log('Connected to MongoDB (Vercel Serverless Context)');
     })
     .catch((error) => {
         console.error('MongoDB Connection Error:', error.message);
-        // Exit the process if database connection fails
+        // Exit the process if database connection fails, critical for serverless
         process.exit(1);
     });
+
+// EXPORT the Express app instance for Vercel to use
+module.exports = app;

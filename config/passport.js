@@ -1,10 +1,7 @@
 // passport.js
 const passport = require('passport');
-// const fs = require('fs'); // Not needed if AppleStrategy is removed
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const FacebookStrategy = require('passport-facebook').Strategy;
-// const AppleStrategy = require('passport-apple'); // Removed
-
 const User = require('../models/User'); // Your User model
 
 passport.serializeUser((user, done) => done(null, user.id));
@@ -14,15 +11,20 @@ passport.deserializeUser((id, done) => User.findById(id).then(u => done(null, u)
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: '/auth/google/callback',
+    // Use the full absolute callback URL from environment variables
+    callbackURL: `${process.env.BACKEND_URL}/api/auth/google/callback`,
+    // If you are using Google to handle state, ensure it matches
+    // This is optional if Passport handles it, but good to know
+    // passReqToCallback: true 
 }, verifyCallback));
 
 /* ---------- FACEBOOK ---------- */
 passport.use(new FacebookStrategy({
     clientID: process.env.FB_APP_ID,
     clientSecret: process.env.FB_APP_SECRET,
-    callbackURL: '/auth/facebook/callback',
-    profileFields: ['id', 'displayName', 'emails', 'name', 'picture.type(large)'], // Request these fields
+    // Use the full absolute callback URL from environment variables
+    callbackURL: `${process.env.BACKEND_URL}/api/auth/facebook/callback`,
+    profileFields: ['id', 'displayName', 'emails', 'name', 'picture.type(large)'],
 }, verifyCallback));
 
 /* ---------- SHARED VERIFY CALLBACK FUNCTION ---------- */
@@ -36,6 +38,7 @@ async function verifyCallback(accessToken, _refreshToken, profile, done) {
 
         if (!user) {
             if (!email) {
+                // Handle cases where email is not provided by social login (e.g., restricted access)
                 return done(new Error(`No email provided by ${provider} for user ID ${providerId}`), null);
             }
 
@@ -43,19 +46,20 @@ async function verifyCallback(accessToken, _refreshToken, profile, done) {
 
             const firstName = profile.name?.givenName || '';
             const lastName = profile.name?.familyName || '';
-            const fullName = profile.displayName || `${firstName} ${lastName}`.trim() || email; // Fallback for name
+            const fullName = profile.displayName || `${firstName} ${lastName}`.trim() || email;
 
             user = await User.create({
                 firstname: firstName,
                 lastname: lastName,
                 name: fullName,
                 email: email,
-                password: undefined,
+                password: undefined, // Social users don't have local passwords
                 provider: provider,
                 providerId: providerId,
-                isVerified: true,
+                isVerified: true, // Social logins are considered verified
 
-                // Set default values for required fields not provided by social login
+                // Set default values for other required fields if your User model requires them
+                // Adjust these as per your actual User model schema
                 phone: '',
                 countryCode: '',
                 address: '',
@@ -63,8 +67,8 @@ async function verifyCallback(accessToken, _refreshToken, profile, done) {
                 state: '',
                 city: '',
                 pincode: '',
-                category: 'Individual',
-                profileType: 'Individual',
+                category: 'Individual', // Default category
+                profileType: 'Individual', // Default profile type
             });
             console.log('New social user created:', user.email);
         } else {
